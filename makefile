@@ -8,7 +8,6 @@ IMG_DIR        := ../images
 # Основные цели
 # ------------------------------------------------------------
 .PHONY: all docs redoc diagrams openapi-docs asyncapi
-
 all: docs
 docs: diagrams
 

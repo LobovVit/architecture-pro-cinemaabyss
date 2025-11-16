@@ -30,7 +30,7 @@ func newBackend(name, rawURL string) *backend {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
+	rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// читаем переменные окружения (должны быть прописаны в docker-compose.yml)
 	legacyURL := getenv("MONOLITH_URL", "http://movies-legacy:8080")
@@ -54,9 +54,19 @@ func main() {
 		handleMovies(w, r, legacy, modern, migrationPercent)
 	})
 
-	// По-хорошему: проксировать и остальные movies-роуты
 	http.HandleFunc("/api/movies/", func(w http.ResponseWriter, r *http.Request) {
 		handleMovies(w, r, legacy, modern, migrationPercent)
+	})
+
+	// ДОБАВЛЯЕМ: прокси для пользователей (без миграции, всё в монолит)
+	http.HandleFunc("/api/users", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Routing %s %s to legacy (users)", r.Method, r.URL.Path)
+		legacy.Proxy.ServeHTTP(w, r)
+	})
+
+	http.HandleFunc("/api/users/", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Routing %s %s to legacy (users)", r.Method, r.URL.Path)
+		legacy.Proxy.ServeHTTP(w, r)
 	})
 
 	// healthcheck

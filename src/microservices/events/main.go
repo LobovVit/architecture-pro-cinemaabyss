@@ -43,7 +43,13 @@ func main() {
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("OK"))
+		_, _ = w.Write([]byte(`{"status": true}`))
+	})
+
+	http.HandleFunc("/api/events/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status": true}`))
 	})
 
 	port := getenv("EVENTS_PORT", "8081")
@@ -105,8 +111,9 @@ func (s *Server) handleEvent(
 	log.Printf("Produced %s event: id=%s payload=%s",
 		eventType, evt.ID, string(evt.Payload))
 
-	w.WriteHeader(http.StatusAccepted)
-	_, _ = w.Write([]byte(`{"status":"ok"}`))
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated) // 201
+	_, _ = w.Write([]byte(`{"status":"success"}`))
 }
 
 func newWriter(broker, topic string) *kafka.Writer {

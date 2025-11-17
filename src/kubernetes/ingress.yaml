@@ -20,24 +20,6 @@ spec:
                 port:
                   number: 8082
 
-          # 🔹 Платежи монолита
-          - path: /api/payments
-            pathType: Prefix
-            backend:
-              service:
-                name: monolith
-                port:
-                  number: 8080
-
-          # 🔹 Подписки монолита
-          - path: /api/subscriptions
-            pathType: Prefix
-            backend:
-              service:
-                name: monolith
-                port:
-                  number: 8080
-
           # 🔹 Всё остальное API → через proxy
           - path: /
             pathType: Prefix

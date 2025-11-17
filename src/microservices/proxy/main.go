@@ -58,7 +58,7 @@ func main() {
 		handleMovies(w, r, legacy, modern, migrationPercent)
 	})
 
-	// ДОБАВЛЯЕМ: прокси для пользователей (без миграции, всё в монолит)
+	// ДОБАВЛЯЕМ: прокси без миграции, всё в монолит
 	http.HandleFunc("/api/users", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Routing %s %s to legacy (users)", r.Method, r.URL.Path)
 		legacy.Proxy.ServeHTTP(w, r)
@@ -66,6 +66,27 @@ func main() {
 
 	http.HandleFunc("/api/users/", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Routing %s %s to legacy (users)", r.Method, r.URL.Path)
+		legacy.Proxy.ServeHTTP(w, r)
+	})
+
+	http.HandleFunc("/api/payments", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Routing %s %s to legacy (payments)", r.Method, r.URL.Path)
+		legacy.Proxy.ServeHTTP(w, r)
+	})
+
+	http.HandleFunc("/api/payments/", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Routing %s %s to legacy (payments)", r.Method, r.URL.Path)
+		legacy.Proxy.ServeHTTP(w, r)
+	})
+
+	// ПРОКСИ ДЛЯ ПОДПИСОК
+	http.HandleFunc("/api/subscriptions", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Routing %s %s to legacy (subscriptions)", r.Method, r.URL.Path)
+		legacy.Proxy.ServeHTTP(w, r)
+	})
+
+	http.HandleFunc("/api/subscriptions/", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Routing %s %s to legacy (subscriptions)", r.Method, r.URL.Path)
 		legacy.Proxy.ServeHTTP(w, r)
 	})
 

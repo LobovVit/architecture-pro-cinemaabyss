@@ -24,8 +24,29 @@ spec:
         app: events-service
     spec:
       containers:
-      - name: events-service
-       .... тут
+        - name: events-service
+          image: "{{ .Values.eventsService.image.repository }}:{{ .Values.eventsService.image.tag }}"
+          imagePullPolicy: {{ .Values.eventsService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.eventsService.containerPort }}
+          env:
+            - name: PORT
+              value: "{{ .Values.eventsService.env.port }}"
+            - name: KAFKA_BROKERS
+              value: "{{ .Values.eventsService.env.kafkaBrokers }}"
+          readinessProbe:
+            httpGet:
+              path: /api/events/health
+              port: {{ .Values.eventsService.containerPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/events/health
+              port: {{ .Values.eventsService.containerPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -37,5 +58,11 @@ metadata:
     app.kubernetes.io/name: {{ include "cinemaabyss.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
- ........ и тут
+  type: ClusterIP
+  selector:
+    app: events-service
+  ports:
+    - name: http
+      port: {{ .Values.eventsService.service.port }}
+      targetPort: {{ .Values.eventsService.service.targetPort }}
 {{- end }}

@@ -5,7 +5,8 @@ global:
 
 # Image pull secrets
 imagePullSecrets:
-  dockerconfigjson: ewoJImF1dGhzIjogewoJCSJnaGNyLmlvIjogewoJCQkiYXV0aCI6
+  dockerconfigjson: eyJhdXRocyI6eyJnaGNyLmlvIjp7InVzZXJuYW1lIjoibG9ib3Z2aXQiLCJwYXNzd29yZCI6ImdocF9UUnhRVGllYThSMmYxeHlWTTdhRUhMMGIxbHBndVoyQlE5Q1EiLCJlbWFpbCI6ImxvYm92LnZpdGFsaXlAZ21haWwuY29tIiwiYXV0aCI6ImJHOWliM1oyYVhRNloyaHdYMVJTZUZGVWFXVmhPRkl5WmpGNGVWWk5OMkZGU0V3d1lqRnNjR2QxV2pKQ1VUbERVUT09In19fQ==
+
 # Database configuration
 database:
   host: postgres
@@ -29,11 +30,11 @@ database:
     size: 10Gi
     accessMode: ReadWriteOnce
 
-# Monolith configuration
+# Monolith
 monolith:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/monolith
+    repository: ghcr.io/lobovvit/architecture-pro-cinemaabyss/monolith
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -49,14 +50,15 @@ monolith:
     targetPort: 8080
     type: ClusterIP
 
-# Proxy service configuration
+# Proxy service
 proxyService:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/proxy-service
+    repository: ghcr.io/lobovvit/architecture-pro-cinemaabyss/proxy-service
     tag: latest
     pullPolicy: Always
   replicas: 1
+  containerPort: 8000
   resources:
     limits:
       cpu: 300m
@@ -68,15 +70,23 @@ proxyService:
     port: 80
     targetPort: 8000
     type: ClusterIP
+  env:
+    port: "8000"
+    monolithUrl: "http://monolith:8080"
+    moviesServiceUrl: "http://movies-service:8081"
+    eventsServiceUrl: "http://events-service:8082"
+    gradualMigration: "true"
+    moviesMigrationPercent: "100"
 
-# Movies service configuration
+# Movies service
 moviesService:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/movies-service
+    repository: ghcr.io/lobovvit/architecture-pro-cinemaabyss/movies-service
     tag: latest
     pullPolicy: Always
   replicas: 1
+  containerPort: 8081
   resources:
     limits:
       cpu: 300m
@@ -88,15 +98,18 @@ moviesService:
     port: 8081
     targetPort: 8081
     type: ClusterIP
+  env:
+    port: "8081"
 
-# Events service configuration
+# Events service
 eventsService:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/events-service
+    repository: ghcr.io/lobovvit/architecture-pro-cinemaabyss/events-service
     tag: latest
     pullPolicy: Always
   replicas: 1
+  containerPort: 8082
   resources:
     limits:
       cpu: 300m
@@ -108,8 +121,11 @@ eventsService:
     port: 8082
     targetPort: 8082
     type: ClusterIP
+  env:
+    port: "8082"
+    kafkaBrokers: "kafka:9092"
 
-# Kafka configuration
+# Kafka
 kafka:
   enabled: true
   image:
@@ -139,7 +155,7 @@ kafka:
       partitions: 1
       replicationFactor: 1
 
-# Zookeeper configuration
+# Zookeeper
 zookeeper:
   enabled: true
   image:
@@ -159,7 +175,7 @@ zookeeper:
     size: 1Gi
     accessMode: ReadWriteOnce
 
-# Ingress configuration
+# Ingress
 ingress:
   enabled: true
   className: nginx
@@ -177,9 +193,6 @@ ingress:
           pathType: Prefix
           service: events-service
           port: 8082
-
-# Application configuration
 config:
-  # Strangler Fig configuration
   gradualMigration: "true"
   moviesMigrationPercent: "100"

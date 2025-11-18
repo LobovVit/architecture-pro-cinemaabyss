@@ -1,0 +1,123 @@
+@startuml
+!include include/C4_Container.puml
+
+' Люди
+Person(user, "Зритель", "Пользователь онлайн-кинотеатра «Кинобездна»")
+
+' Внешние системы
+System_Ext(payments, "Платёжные провайдеры", "Внешние платёжные системы")
+System_Ext(reco, "Рекомендательная система", "Сторонний сервис рекомендаций")
+System_Ext(loyalty, "Партнёрские программы лояльности и маркетплейсы", "Начисление и списание бонусов, промо")
+System_Ext(contentProviders, "Контент-провайдеры/CDN", "Сторонние источники видеоконтента")
+System_Ext(mailSms, "Email/SMS провайдеры", "Отправка писем и SMS")
+
+System_Boundary(kino, "Онлайн-кинотеатр «Кинобездна»") {
+
+  ' Клиентские приложения
+  Container(webApp, "Web-клиент", "SPA / Web", "Интерфейс для браузера на ноутбуке")
+  Container(mobileApp, "Мобильное приложение", "iOS/Android", "Интерфейс для смартфонов")
+  Container(tvApp, "SmartTV приложение", "SmartTV", "Интерфейс для телевизоров")
+
+  ' Единая точка входа и BFF
+  Container(apiGateway, "API Gateway", "Go + Nginx/Envoy", "Единая точка входа, маршрутизация, аутентификация, rate limiting")
+  Container(bffWeb, "Web BFF", "Go", "Адаптирует API под Web, агрегация данных")
+  Container(bffMobileTv, "Mobile/TV BFF", "Go", "Адаптирует API под мобильные и SmartTV клиенты")
+
+  ' Основные доменные сервисы
+  Container(authSvc, "Auth & Users Service", "Go", "Регистрация, логин, управление пользователями") {
+  }
+  ContainerDb(authDb, "users-db", "PostgreSQL", "Данные пользователей и учётки")
+
+  Container(profileSvc, "Profile Service", "Go", "Избранное, оценки, история просмотров")
+  ContainerDb(profileDb, "profile-db", "PostgreSQL", "Профили пользователей, избранное, оценки")
+
+  Container(catalogSvc, "Catalog & Metadata Service", "Go", "Метаданные фильмов, поиск, фильтрация (выделенный микросервис)")
+  ContainerDb(catalogDb, "catalog-db", "PostgreSQL", "Каталог фильмов, жанры, актёры, рейтинги")
+
+  Container(subSvc, "Subscription Service", "Go", "Управление подписками и тарифами")
+  ContainerDb(subDb, "subscription-db", "PostgreSQL", "Планы и статусы подписок")
+
+  Container(paySvc, "Payment Service", "Go", "Создание и обработка платежей, интеграция с платёжными провайдерами")
+  ContainerDb(payDb, "payment-db", "PostgreSQL", "Транзакции и статусы платежей")
+
+  Container(discountSvc, "Discount & Loyalty Service", "Go", "Скидки, промокоды, интеграция с программами лояльности")
+  ContainerDb(discountDb, "discount-db", "PostgreSQL", "Правила скидок, промо")
+
+  Container(contentAggSvc, "Content Aggregator Service", "Go", "Интеграция с внешними поставщиками контента, выдача ссылок для стриминга")
+
+  Container(recoAdapterSvc, "Recommendation Adapter Service", "Go", "Адаптер к внешней рекомендательной системе")
+
+  Container(notificationSvc, "Notification Service", "Go", "Отправка email/SMS/push уведомлений")
+
+  ' Event Bus
+  Container(kafka, "Event Bus (Kafka)", "Kafka", "Шина событий: просмотры, оценки, платежи, изменения подписок")
+
+  ' Legacy монолит
+  Container(legacyMonolith, "Legacy Monolith", "Go monolith", "Существующая монолитная система, постепенно декомпозируется")
+  ContainerDb(legacyDb, "legacy-db", "PostgreSQL", "Существующая общая БД монолита")
+
+  ' Инфраструктура
+  Container(monitoring, "Monitoring & Logging", "Prometheus/Grafana/Логи", "Наблюдаемость и логирование")
+}
+
+' Связи пользователя с клиентами
+Rel(user, webApp, "Использует", "HTTPS")
+Rel(user, mobileApp, "Использует", "HTTPS")
+Rel(user, tvApp, "Использует", "HTTPS")
+
+' Клиенты -> API Gateway
+Rel(webApp, apiGateway, "Вызывает API", "HTTPS/REST")
+Rel(mobileApp, apiGateway, "Вызывает API", "HTTPS/REST")
+Rel(tvApp, apiGateway, "Вызывает API", "HTTPS/REST")
+
+' API Gateway -> BFF
+Rel(apiGateway, bffWeb, "Маршрутизирует запросы Web")
+Rel(apiGateway, bffMobileTv, "Маршрутизирует запросы Mobile/TV")
+
+' BFF -> доменные сервисы
+Rel(bffWeb, authSvc, "Использует", "REST/gRPC")
+Rel(bffWeb, profileSvc, "Использует", "REST/gRPC")
+Rel(bffWeb, catalogSvc, "Использует", "REST/gRPC")
+Rel(bffWeb, subSvc, "Использует", "REST/gRPC")
+Rel(bffWeb, paySvc, "Использует", "REST/gRPC")
+Rel(bffWeb, discountSvc, "Использует", "REST/gRPC")
+Rel(bffWeb, contentAggSvc, "Использует", "REST/gRPC")
+Rel(bffWeb, recoAdapterSvc, "Использует", "REST/gRPC")
+
+Rel(bffMobileTv, authSvc, "Использует", "REST/gRPC")
+Rel(bffMobileTv, profileSvc, "Использует", "REST/gRPC")
+Rel(bffMobileTv, catalogSvc, "Использует", "REST/gRPC")
+Rel(bffMobileTv, subSvc, "Использует", "REST/gRPC")
+Rel(bffMobileTv, contentAggSvc, "Использует", "REST/gRPC")
+Rel(bffMobileTv, recoAdapterSvc, "Использует", "REST/gRPC")
+
+' Доступ к БД
+Rel(authSvc, authDb, "Читает/пишет", "SQL")
+Rel(profileSvc, profileDb, "Читает/пишет", "SQL")
+Rel(catalogSvc, catalogDb, "Читает/пишет", "SQL")
+Rel(subSvc, subDb, "Читает/пишет", "SQL")
+Rel(paySvc, payDb, "Читает/пишет", "SQL")
+Rel(discountSvc, discountDb, "Читает/пишет", "SQL")
+Rel(legacyMonolith, legacyDb, "Читает/пишет", "SQL")
+
+' Взаимодействие с внешними системами
+Rel(paySvc, payments, "Вызывает платёжные API", "HTTPS")
+Rel_L(payments, paySvc, "Отправляет webhook-и", "HTTPS")
+
+Rel(discountSvc, loyalty, "Интеграция с программами лояльности", "HTTPS/REST")
+
+Rel(contentAggSvc, contentProviders, "Запрашивает источники видео", "HTTPS")
+
+Rel(recoAdapterSvc, reco, "Запрашивает рекомендации", "HTTPS/REST")
+
+Rel(notificationSvc, mailSms, "Отправляет Email/SMS", "SMTP/HTTPS")
+
+' События в Kafka
+Rel(profileSvc, kafka, "Публикует события (оценки, избранное, просмотры)")
+Rel(paySvc, kafka, "Публикует события (платежи)")
+Rel(subSvc, kafka, "Публикует события (изменения подписки)")
+Rel(notificationSvc, kafka, "Читает события для триггерных уведомлений")
+
+' Legacy монолит за Gateway
+Rel(apiGateway, legacyMonolith, "Вызывает часть старых API", "REST")
+@enduml
